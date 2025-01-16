@@ -39,6 +39,7 @@ const WalletConnect = () => {
   })
   // 检查是否安装了 MetaMask
   const checkIfWalletIsInstalled = () => {
+    //@ts-ignore
     if (typeof window.ethereum === 'undefined') {
       setError('please install MetaMask wallet');
       return false;
@@ -56,7 +57,7 @@ const WalletConnect = () => {
       console.log(wallets)
 
       if (wallets[0]) {
-
+        //@ts-ignore
         setAccount(wallets[0].address)
         // create an ethers provider with the last connected wallet provider
         const ethersProvider = new ethers.BrowserProvider(wallets[0].provider, 'any')
@@ -81,9 +82,10 @@ const WalletConnect = () => {
   // listen to account changes
   const listenToAccountChanges = () => {
     if (!checkIfWalletIsInstalled()) return;
-
+    //@ts-ignore
     window.ethereum.on('accountsChanged', async (accounts: any) => {
       if (accounts.length > 0) {
+        //@ts-ignore
         const web3 = new Web3(window.ethereum);
         const balance = await web3.eth.getBalance(accounts[0]);
         setAccount(accounts[0]);
@@ -100,7 +102,7 @@ const WalletConnect = () => {
   // listen to chain changes
   const listenToChainChanges = () => {
     if (!checkIfWalletIsInstalled()) return;
-
+    //@ts-ignore
     window.ethereum.on('chainChanged', (chainId: string) => {
       setChainId(parseInt(chainId).toString());
       // recommend to refresh page when chain changed
@@ -150,7 +152,7 @@ const WalletConnect = () => {
       setSignature(signature);
 
       return signature
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
         error: error.message
