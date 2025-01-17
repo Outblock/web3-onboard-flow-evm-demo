@@ -13,46 +13,56 @@ const WalletConnect = () => {
   const [chainId, setChainId] = useState('');
   const [error, setError] = useState('');
   const [toAddress, setToAddress] = useState('');
-  const [selectedNetwork, setSelectedNetwork] = useState('');
   const [message, setMessage] = useState('');
-  const [signature, setSignature] = useState('');
+  const [signature, setSignature] = useState(null);
   const [provider, setProvider] = useState<any>(null)
+  const [flowWalletProvider, setFlowWalletProvider] = useState(null)
 
-  const injected = injectedModule()
+  const setupEventListeners = () => {
+    // 监听钱包公告事件
+    window.addEventListener(
+      'eip6963:announceProvider',
+      ((event: CustomEvent) => {
+        const { info, provider } = event.detail;
+        console.log('Wallet announced:', info.name);
+        if (info.rdns == 'com.flowfoundation.wallet') {
+          setFlowWalletProvider(provider)
+        }
 
-  const onboard = Onboard({
-    wallets: [injected],
-    chains: [
-      {
-        id: '747',
-        token: 'FLOW',
-        label: 'Flow EVM Mainnet',
-        rpcUrl: 'https://mainnet.evm.nodes.onflow.org'
-      },
-      {
-        id: '545',
-        token: 'FLOW',
-        label: 'Flow EVM Testnet',
-        rpcUrl: 'https://testnet.evm.nodes.onflow.org'
-      }
-    ]
-  })
-  // 检查是否安装了 MetaMask
-  const checkIfWalletIsInstalled = () => {
-    //@ts-ignore
-    if (typeof window.ethereum === 'undefined') {
-      setError('please install MetaMask wallet');
-      return false;
-    }
-    return true;
-  };
+      }) as EventListener
+    );
+  }
+
+
+  useEffect(() => {
+    setupEventListeners()
+  }, [])
+
 
 
 
   // connect wallet
   const connectWallet = async () => {
     try {
-      if (!checkIfWalletIsInstalled()) return;
+      const injected = injectedModule()
+
+      const onboard = Onboard({
+        wallets: [injected],
+        chains: [
+          {
+            id: '747',
+            token: 'FLOW',
+            label: 'Flow EVM Mainnet',
+            rpcUrl: 'https://mainnet.evm.nodes.onflow.org'
+          },
+          {
+            id: '545',
+            token: 'FLOW',
+            label: 'Flow EVM Testnet',
+            rpcUrl: 'https://testnet.evm.nodes.onflow.org'
+          }
+        ]
+      })
       const wallets = await onboard.connectWallet()
       console.log(wallets)
 
@@ -60,7 +70,7 @@ const WalletConnect = () => {
         //@ts-ignore
         setAccount(wallets[0].address)
         // create an ethers provider with the last connected wallet provider
-        const ethersProvider = new ethers.BrowserProvider(wallets[0].provider, 'any')
+        const ethersProvider = new ethers.BrowserProvider(flowWalletProvider!)
         setProvider(ethersProvider)
 
         // request user to connect wallet
@@ -79,36 +89,8 @@ const WalletConnect = () => {
     }
   };
 
-  // listen to account changes
-  const listenToAccountChanges = () => {
-    if (!checkIfWalletIsInstalled()) return;
-    //@ts-ignore
-    window.ethereum.on('accountsChanged', async (accounts: any) => {
-      if (accounts.length > 0) {
-        //@ts-ignore
-        const web3 = new Web3(window.ethereum);
-        const balance = await web3.eth.getBalance(accounts[0]);
-        setAccount(accounts[0]);
-        setBalance(web3.utils.toWei(balance, 'ether'));
 
-      } else {
-        // user disconnected all accounts
-        setAccount('');
-        setBalance('');
-      }
-    });
-  };
 
-  // listen to chain changes
-  const listenToChainChanges = () => {
-    if (!checkIfWalletIsInstalled()) return;
-    //@ts-ignore
-    window.ethereum.on('chainChanged', (chainId: string) => {
-      setChainId(parseInt(chainId).toString());
-      // recommend to refresh page when chain changed
-      window.location.reload();
-    });
-  };
 
 
   // send transaction
@@ -134,19 +116,11 @@ const WalletConnect = () => {
     }
   };
 
-  useEffect(() => {
-    listenToAccountChanges();
-    listenToChainChanges();
-  }, []);
-
-
 
 
   const signMessage = async (message: string) => {
     try {
-      // const wallets = await onboard.connectWallet()
 
-      // const ethersProvider = new ethers.BrowserProvider(wallets[0].provider, 'any')
       const signer = await provider.getSigner()
       const signature = await signer.signMessage(message)
       setSignature(signature);
